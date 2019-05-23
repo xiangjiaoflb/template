@@ -16,6 +16,18 @@ const (
 
 	//第一种验证的签名
 	authstr = "authone"
+
+	//username key
+	keyUsername = "username"
+
+	//password key
+	keyPassword = "password"
+
+	//session key
+	keySession = "session"
+
+	//ip key
+	keyIP = "ip"
 )
 
 var (

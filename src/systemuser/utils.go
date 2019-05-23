@@ -3,6 +3,7 @@ package systemuser
 import (
 	"crypto/md5"
 	"fmt"
+	"strings"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -27,22 +28,27 @@ func checkoutPasswork(passwork string, salt string, passworkMd5 string) bool {
 }
 
 // CreateJWT 创建jwt字符串
-func CreateJWT(username interface{}, signature string) (jwtstr string, err error) {
+func CreateJWT(kv map[string]interface{}, signature string) (jwtstr string, err error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	//自定义claim
-	token.Claims = jwt.MapClaims{
-		"username": username,
-		"nbf":      time.Now().Unix(),
-		"iat":      time.Now().Unix(),
-		"exp":      time.Now().Add(time.Second * time.Duration(60*30)).Unix(),
+	mapClaims := jwt.MapClaims{
+		"nbf": time.Now().Unix(),
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Second * time.Duration(60*30)).Unix(),
 	}
+
+	for k, v := range kv {
+		mapClaims[k] = v
+	}
+
+	token.Claims = mapClaims
 
 	return token.SignedString([]byte(signature))
 }
 
 //ParseJWT 解析jwt字符串
-func ParseJWT(tokenss string, signature string) (jwtmap jwt.MapClaims, err error) {
+func ParseJWT(tokenss string, signature string) (jwtmap map[string]interface{}, err error) {
 	token, err := jwt.Parse(tokenss, func(token *jwt.Token) (interface{}, error) {
 		return []byte(signature), nil
 	})
@@ -62,4 +68,8 @@ func ParseJWT(tokenss string, signature string) (jwtmap jwt.MapClaims, err error
 
 	jwtmap = claim
 	return
+}
+
+func getIP(ipAndPort string) string {
+	return strings.Split(ipAndPort, ":")[0]
 }

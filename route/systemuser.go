@@ -6,14 +6,22 @@ import (
 	"github.com/xiangjiaoflb/httpframe"
 )
 
-// User ...
-type User struct{}
+// Api ...
+type Api struct{}
 
 //Login 登录
-func (User) Login(ctx *httpframe.Context) {
+func (Api) Login(ctx *httpframe.Context) {
 	systemuser.Login(ctx)
 }
 
 //LoginOut 退出登录
-func (User) LoginOut(ctx *httpframe.Context) {
+func (Api) LoginOut(ctx *httpframe.Context) {
+}
+
+// User ...
+type User struct{}
+
+//Register 注册账号
+func (User) Register(ctx *httpframe.Context) {
+	systemuser.Register(ctx)
 }

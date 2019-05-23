@@ -12,27 +12,6 @@ import (
 	"github.com/xiangjiaoflb/jsonlog"
 )
 
-//获取用户名密码
-func getUserInfo(ctx *httpframe.Context) (user User, err error) {
-	//根据数据样式解析
-	switch ctx.R.Header.Get("Content-Type") {
-	case "application/json":
-		buf, err := ioutil.ReadAll(ctx.R.Body)
-		if err != nil {
-			return user, err
-		}
-		err = json.Unmarshal(buf, &user)
-		if err != nil {
-			return user, err
-		}
-		return user, nil
-	default:
-		user.Username = ctx.R.FormValue("username")
-		user.Password = ctx.R.FormValue("password")
-		return
-	}
-}
-
 //Login 登录
 func Login(ctx *httpframe.Context) {
 	flog := jsonlog.Info(log.RequestLog)
@@ -58,7 +37,7 @@ func Login(ctx *httpframe.Context) {
 		return
 	}
 
-	if quser.Username == "" || quser.Password == "" {
+	if quser.Username == "" || quser.Password == "" || quser.Salt == "" {
 		jsonlog.SendJSON(flog, ctx.W, fmt.Errorf("系统内部错误"), nil, 401)
 		return
 	}
@@ -69,8 +48,44 @@ func Login(ctx *httpframe.Context) {
 		return
 	}
 
-	//创建jwt
+	//确定签名
+	signature := quser.getuserAndSignature(quser.Username)
 
+	//创建jwt
+	token, err := CreateJWT(map[string]interface{}{
+		keyUsername: user.Username,
+		keySession:  quser.session,
+		keyIP:       getIP(ctx.R.RemoteAddr),
+	}, signature)
+	if err != nil {
+		jsonlog.SendJSON(flog, ctx.W, err, nil, 401)
+		return
+	}
+
+	jsonlog.SendJSON(flog, ctx.W, nil, map[string]interface{}{
+		"token": token,
+	}, 200)
+}
+
+//获取用户名密码
+func getUserInfo(ctx *httpframe.Context) (user User, err error) {
+	//根据数据样式解析
+	switch ctx.R.Header.Get("Content-Type") {
+	case "application/json":
+		buf, err := ioutil.ReadAll(ctx.R.Body)
+		if err != nil {
+			return user, err
+		}
+		err = json.Unmarshal(buf, &user)
+		if err != nil {
+			return user, err
+		}
+		return user, nil
+	default:
+		user.Username = ctx.R.FormValue(keyUsername)
+		user.Password = ctx.R.FormValue(keyPassword)
+		return
+	}
 }
 
 //查询内存或者数据库的用户信息
