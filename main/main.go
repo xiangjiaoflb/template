@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"template/log"
@@ -28,12 +30,16 @@ var (
 )
 
 func main() {
+	port := 0
+	flag.IntVar(&port, "port", 9000, "server port")
+	flag.Parse()
+
 	//程序启动打印日志
 	jsonlog.Info(log.RunLog).
-		Str(VERSION, VERSION).
-		Str(BUILDTIME, BUILDTIME).
-		Str(GOVERSION, GOVERSION).
-		Str(GITHASH, GITHASH).Msg("begin run!")
+		Str("VERSION", VERSION).
+		Str("BUILDTIME", BUILDTIME).
+		Str("GOVERSION", GOVERSION).
+		Str("GITHASH", GITHASH).Msg("begin run!")
 
 	servermux := http.NewServeMux()
 
@@ -47,7 +53,18 @@ func main() {
 	servermux.HandleFunc("/", httpframe.NewMiddleware(append([]httpframe.HandlerFunc{systemuser.LoginVerify},
 		func(ctx *httpframe.Context) { http.FileServer(http.Dir(".")).ServeHTTP(ctx.W, ctx.R) })).HandleFunc)
 
-	err := http.ListenAndServe(":8888", servermux)
+	//查看版本号
+	servermux.HandleFunc("/version", httpframe.NewMiddleware(append([]httpframe.HandlerFunc{systemuser.LoginVerify},
+		func(ctx *httpframe.Context) {
+			jsonlog.SendJSON(nil, ctx.W, nil, map[string]string{
+				"VERSION":   VERSION,
+				"BUILDTIME": BUILDTIME,
+				"GOVERSION": GOVERSION,
+				"GITHASH":   GITHASH,
+			}, 200)
+		})).HandleFunc)
+
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), servermux)
 	if err != nil {
 		jsonlog.Error(log.RunLog).Err(err).Msg("")
 	}
@@ -78,6 +95,7 @@ func init() {
 	//创建数据
 	systemuser.RegisterUser(user)
 
+	//设置验证方式
 	systemuser.SetAuthType(systemuser.AuthThree)
 }
 
