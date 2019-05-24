@@ -48,25 +48,25 @@ func CreateJWT(kv map[string]interface{}, signature string) (jwtstr string, err 
 }
 
 //ParseJWT 解析jwt字符串
-func ParseJWT(tokenss string, signature string) (jwtmap map[string]interface{}, err error) {
+func ParseJWT(tokenss string, getsignature func(map[string]interface{}) (interface{}, error)) (err error) {
 	token, err := jwt.Parse(tokenss, func(token *jwt.Token) (interface{}, error) {
-		return []byte(signature), nil
+		claim, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			err = fmt.Errorf("cannot convert claim to mapclaim")
+			return nil, err
+		}
+
+		return getsignature(claim)
 	})
 	if err != nil {
 		return
 	}
-	claim, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		err = fmt.Errorf("cannot convert claim to mapclaim")
-		return
-	}
+
 	//验证token，如果token被修改过则为false
 	if !token.Valid {
 		err = fmt.Errorf("token is invalid")
 		return
 	}
-
-	jwtmap = claim
 	return
 }
 

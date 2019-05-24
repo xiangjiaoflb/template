@@ -18,7 +18,7 @@ var (
 			jsonlog.LoggingWriteOutput: true, //是否打印到标准输出
 		})
 
-	requestLogPath     = path.Join(pathmanage.GetLOGPATH("request"), "run.log")
+	requestLogPath     = path.Join(pathmanage.GetLOGPATH("request"), "request.log")
 	requestLogConfPath = path.Join(pathmanage.GetCONFPATH("log"), "requestlog")
 	//RequestLog 请求日志
 	RequestLog = jsonlog.NewJSONLog(requestLogPath, requestLogConfPath,

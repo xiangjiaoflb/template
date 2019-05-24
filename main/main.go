@@ -77,9 +77,11 @@ func init() {
 	}
 	//创建数据
 	systemuser.RegisterUser(user)
+
+	systemuser.SetAuthType(systemuser.AuthThree)
 }
 
-//
 var (
-	DEBUG = true
+	//DEBUG 调试开关
+	DEBUG = false
 )

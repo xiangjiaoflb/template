@@ -18,6 +18,9 @@ func Register(ctx *httpframe.Context) {
 	//记录请求
 	bodybuf := jsonlog.RequestLog(ctx.R, flog)
 
+	//此处可判断权限
+	//puser := getCtxData(ctx)
+
 	//判断请求方式
 	if ctx.R.Method != "POST" {
 		jsonlog.SendJSON(flog, ctx.W, fmt.Errorf("请求方式错误"), nil, 400)

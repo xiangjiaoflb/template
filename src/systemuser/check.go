@@ -8,42 +8,64 @@ import (
 	"github.com/xiangjiaoflb/jsonlog"
 )
 
-func getusername(ctx *httpframe.Context) string {
-	return ctx.R.FormValue(keyUsername)
-}
-
 //LoginVerify 判断是否登陆,验证 的中间件
 //读取用户token
 func LoginVerify(ctx *httpframe.Context) {
-	flog := jsonlog.Info(log.RequestLog)
-	defer flog.Msg("")
+	var err error
+	defer func() {
+		if err != nil {
+			flog := jsonlog.Info(log.RequestLog)
+			defer flog.Msg("")
+			jsonlog.RequestLog(ctx.R, flog)
+			jsonlog.SendJSON(flog, ctx.W, err, nil, 401)
+		}
+	}()
 
 	//判断验证类型
 	//确定签名
 	var user User
-	signature := user.getuserAndSignature(getusername(ctx))
-
+	var jwtmap map[string]interface{}
 	//解析 token  //验证了密码
-	jwtmap, err := ParseJWT(gettoken(ctx), signature)
+	err = ParseJWT(gettoken(ctx), func(mapint map[string]interface{}) (interface{}, error) {
+		jwtmap = mapint
+
+		inter, ok := jwtmap[keyUsername]
+		if !ok {
+			return nil, fmt.Errorf("token失效")
+		}
+		username, ok := inter.(string)
+		if !ok {
+			return nil, fmt.Errorf("token失效")
+		}
+
+		if username == "" {
+			return nil, fmt.Errorf("token失效")
+		}
+
+		signature := user.getuserAndSignature(username)
+		if signature == "" {
+			return nil, fmt.Errorf("系统内部错误")
+		}
+		return []byte(signature), nil
+	})
 	if err != nil {
-		jsonlog.SendJSON(flog, ctx.W, err, nil, 401)
 		return
 	}
 
 	//验证信息 ip
 	inter, ok := jwtmap[keyIP]
 	if !ok {
-		jsonlog.SendJSON(flog, ctx.W, fmt.Errorf("token失效"), nil, 401)
+		err = fmt.Errorf("token失效")
 		return
 	}
 	ip, ok := inter.(string)
 	if !ok {
-		jsonlog.SendJSON(flog, ctx.W, fmt.Errorf("token失效"), nil, 401)
+		err = fmt.Errorf("token失效")
 		return
 	}
 
 	if ip != getIP(ctx.R.RemoteAddr) {
-		jsonlog.SendJSON(flog, ctx.W, fmt.Errorf("ip错误"), nil, 401)
+		err = fmt.Errorf("ip错误")
 		return
 	}
 
@@ -51,21 +73,22 @@ func LoginVerify(ctx *httpframe.Context) {
 	if authtype == AuthThree {
 		inter, ok = jwtmap[keySession]
 		if !ok {
-			jsonlog.SendJSON(flog, ctx.W, fmt.Errorf("token失效"), nil, 401)
+			err = fmt.Errorf("token失效")
 			return
 		}
 		session, ok := inter.(string)
 		if !ok {
-			jsonlog.SendJSON(flog, ctx.W, fmt.Errorf("token失效"), nil, 401)
+			err = fmt.Errorf("token失效")
 			return
 		}
 
 		if session != user.session {
-			jsonlog.SendJSON(flog, ctx.W, fmt.Errorf("账号在其他地方登录"), nil, 401)
+			err = fmt.Errorf("账号在其他地方登录")
 			return
 		}
 	}
 
+	ctx.Data = &user
 	ctx.Next()
 }
 
@@ -75,7 +98,6 @@ func gettoken(ctx *httpframe.Context) (token string) {
 	return
 }
 
-
 func (user *User) getuserAndSignature(username string) (signature string) {
 	//确定签名
 	switch authtype {
@@ -84,15 +106,15 @@ func (user *User) getuserAndSignature(username string) (signature string) {
 	case AuthTwo:
 		if user.Password == "" {
 			//查询数据库
-			newuser, _ := queryUserInfo(username)
-			*user = newuser
+			newuser, _ := queryUserInfo(username, false)
+			*user = *newuser
 		}
 		signature = user.Password
 	case AuthThree:
 		if user.Password == "" {
 			//查询数据库
-			newuser, _ := queryUserInfo(username)
-			*user = newuser
+			newuser, _ := queryUserInfo(username, false)
+			*user = *newuser
 		}
 		signature = user.Password
 	}

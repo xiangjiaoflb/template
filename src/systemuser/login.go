@@ -31,7 +31,7 @@ func Login(ctx *httpframe.Context) {
 	}
 
 	//查询内存或数据库的信息
-	quser, err := queryUserInfo(user.Username)
+	quser, err := queryUserInfo(user.Username, true)
 	if err != nil {
 		jsonlog.SendJSON(flog, ctx.W, err, nil, 401)
 		return
@@ -53,7 +53,7 @@ func Login(ctx *httpframe.Context) {
 
 	//创建jwt
 	token, err := CreateJWT(map[string]interface{}{
-		keyUsername: user.Username,
+		keyUsername: quser.Username,
 		keySession:  quser.session,
 		keyIP:       getIP(ctx.R.RemoteAddr),
 	}, signature)
@@ -89,32 +89,38 @@ func getUserInfo(ctx *httpframe.Context) (user User, err error) {
 }
 
 //查询内存或者数据库的用户信息
-func queryUserInfo(username string) (user User, err error) {
+func queryUserInfo(username string, replacesession bool) (puser *User, err error) {
+	puser = new(User)
+
 	//判断验证的类型
 	switch authtype {
 	case AuthOne:
 		//读数据库
-		err = database.DB.First(&user, User{Username: username}).Error
+		err = database.DB.First(puser, User{Username: username}).Error
 		return
 	case AuthTwo, AuthThree:
 		//先读内存，没有再读数据库
 		if v, ok := memoryuser.Load(username); ok {
-			user, _ = v.(User)
+			puser, _ = v.(*User)
+			//增加session
+			if replacesession && authtype == AuthThree {
+				puser.session = getSalt()
+			}
 			return
 		}
 
 		//读数据库
-		err = database.DB.First(&user, User{Username: username}).Error
+		err = database.DB.First(puser, &User{Username: username}).Error
 		if err != nil {
 			return
 		}
 
-		//增加session
-		if authtype == AuthThree {
-			user.session = getSalt()
+		//增加session //保证模式2切换到3时之前的token也能用
+		if replacesession && authtype == AuthThree {
+			puser.session = getSalt()
 		}
 
-		err = memoryuser.Store(username, user, time.Minute*30)
+		err = memoryuser.Store(username, puser, time.Minute*30)
 		return
 	default:
 		err = fmt.Errorf("系统内部错误")

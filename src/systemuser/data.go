@@ -14,7 +14,7 @@ const (
 	AuthTwo
 	AuthThree
 
-	//第一种验证的签名
+	//第一种模式验证的签名
 	authstr = "authone"
 
 	//username key
@@ -28,6 +28,9 @@ const (
 
 	//ip key
 	keyIP = "ip"
+
+	//第二三模式时刻控制最大登录量
+	loginsize = 100
 )
 
 var (
@@ -62,11 +65,11 @@ func SetAuthType(at AuthType) error {
 		memoryuser = nil
 	case AuthTwo:
 		if memoryuser == nil {
-			memoryuser = utils.NewMemory(1000)
+			memoryuser = utils.NewMemory(loginsize)
 		}
 	case AuthThree:
 		if memoryuser == nil {
-			memoryuser = utils.NewMemory(1000)
+			memoryuser = utils.NewMemory(loginsize)
 		}
 	default:
 		return fmt.Errorf("不支持的类型")

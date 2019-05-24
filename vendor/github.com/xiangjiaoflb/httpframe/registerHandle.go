@@ -12,6 +12,8 @@ type Context struct {
 	W    http.ResponseWriter
 	R    *http.Request
 	next bool
+
+	Data interface{} //上下文的信息传递
 }
 
 // Next 执行下一个handle

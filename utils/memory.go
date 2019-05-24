@@ -18,6 +18,8 @@ type Memory struct {
 	cleandata clean
 
 	deletechan chan interface{}
+
+	status int32
 }
 
 type clean struct {
@@ -57,6 +59,10 @@ type close int
 
 //
 func (mm *Memory) Close() {
+	oldstatus := atomic.SwapInt32(&mm.status, 1)
+	if oldstatus == 1 {
+		return
+	}
 	mm.cleandata.closechan <- true
 	mm.deletechan <- close(0)
 }
@@ -86,7 +92,7 @@ func (mm *Memory) Store(key interface{}, v interface{}, survivalTime time.Durati
 	if count > mm.size {
 		//摆不下了则出去
 		mm.kv.Delete(key)
-		return fmt.Errorf("达到最大量了")
+		return fmt.Errorf("登录者达到最大量了")
 	}
 
 	return nil

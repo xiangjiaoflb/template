@@ -25,3 +25,8 @@ type User struct{}
 func (User) Register(ctx *httpframe.Context) {
 	systemuser.Register(ctx)
 }
+
+//KeepAlive 保活
+func (User) KeepAlive(ctx *httpframe.Context) {
+	systemuser.KeepAlive(ctx)
+}
