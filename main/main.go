@@ -81,20 +81,6 @@ func init() {
 		db.LogMode(true)
 	}
 
-	//创建表
-	err = db.AutoMigrate(&systemuser.User{}).Error
-	if err != nil {
-		jsonlog.Error(log.RunLog).Err(err).Msg("")
-		os.Exit(-1)
-	}
-
-	user := systemuser.User{
-		Username: "admin",
-		Password: "admin",
-	}
-	//创建数据
-	systemuser.RegisterUser(user)
-
 	//设置验证方式
 	systemuser.SetAuthType(systemuser.AuthThree)
 }

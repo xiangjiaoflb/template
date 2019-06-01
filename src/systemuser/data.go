@@ -2,7 +2,13 @@ package systemuser
 
 import (
 	"fmt"
+	"os"
+	"template/log"
+	"template/src/database"
 	"template/utils"
+	"time"
+
+	"github.com/xiangjiaoflb/jsonlog"
 )
 
 // AuthType 采用认证的类型
@@ -47,11 +53,44 @@ type User struct {
 	Salt     string `gorm:"column:salt;not null" json:"salt"`                //盐
 
 	session string
+
+	//权限等
 }
 
 //TableName 表名
 func (User) TableName() string {
 	return "user"
+}
+
+func init() {
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			if database.DB != nil {
+				//创建表
+				err := database.DB.AutoMigrate(&User{}).Error
+				if err != nil {
+					jsonlog.Error(log.RunLog).Err(err).Msg("")
+					os.Exit(-1)
+				}
+
+				user := User{
+					Username: "admin",
+					Password: "admin",
+				}
+
+				//创建数据
+				//加密密码 存数据库
+				user.Password, user.Salt = encryptPasswork(user.Password)
+				err = database.DB.FirstOrCreate(&user, &User{Username: "admin"}).Error
+				if err != nil {
+					jsonlog.Error(log.RunLog).Err(err).Msg("")
+					os.Exit(-1)
+				}
+				break
+			}
+		}
+	}()
 }
 
 //SetAuthType 设置验证方式
